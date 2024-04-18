@@ -42,44 +42,52 @@
         // Mostrar información sobre la memoria
         function logMemoryUsage(message) {
             const memoryInfo = tf.memory();
-            console.log(message, memoryInfo);
+            console.log(message, memoryInfo.numBytes / (1024 * 1024), 'MB');
         }
 
         // Inicializar variables
-        let totalMemoryBefore = 0;
-        let totalMemoryAfter = 0;
-        let iteration = 0;
+        let totalMemoryUsed = 0;
+        let iterations = 0;
 
-        // Realizar el bucle hasta alcanzar aproximadamente 64 MB de memoria
-        while (totalMemoryAfter - totalMemoryBefore <= 64 * 1024 * 1024) {
-            iteration++;
-            console.log(`Iteración ${iteration}:`);
-
+        // Repetir hasta que la memoria total utilizada sea aproximadamente 64 MB
+        while (totalMemoryUsed < 64 * 1024 * 1024) {
             // Generar dos tensores y multiplicarlos
             const tensor1 = generateTensor();
             const tensor2 = generateTensor();
-
-            // Antes de la multiplicación
-            logMemoryUsage("Antes de la multiplicación:");
-
             const result = tf.matMul(tensor1, tensor2);
 
-            // Después de la multiplicación
-            logMemoryUsage("Después de la multiplicación:");
+            // Actualizar la memoria total utilizada
+            const memoryInfo = tf.memory();
+            totalMemoryUsed = memoryInfo.numBytes;
 
-            // Liberar memoria
-            tensor1.dispose();
-            tensor2.dispose();
-            result.dispose();
+            // Mostrar información sobre la memoria
+            logMemoryUsage(`Después de la iteración ${iterations + 1}:`);
 
-            // Calcular uso de memoria después de liberar
-            const memoryInfoAfter = tf.memory();
-            totalMemoryBefore = totalMemoryAfter;
-            totalMemoryAfter = memoryInfoAfter.numBytes;
+            // Mostrar el resultado en la tabla
+            const outputTable = document.getElementById('output');
+            tf.tidy(() => {
+                for (let i = 0; i < 10; i++) { // Mostramos solo las primeras 10 filas por simplicidad
+                    const row = outputTable.insertRow();
+                    for (let j = 0; j < 3; j++) {
+                        const cell = row.insertCell();
+                        if (j === 0) {
+                            cell.innerText = tensor1.slice([i, 0], [1, -1]).arraySync();
+                        } else if (j === 1) {
+                            cell.innerText = tensor2.slice([i, 0], [1, -1]).arraySync();
+                        } else {
+                            cell.innerText = result.slice([i, 0], [1, -1]).arraySync();
+                        }
+                    }
+                }
+            });
+
+            iterations++;
         }
 
-        // Imprimir mensaje final cuando se alcance el límite de memoria
-        console.log("Se alcanzó aproximadamente 64 MB de memoria.");
+        // Liberar memoria después de alcanzar los 64 MB
+        logMemoryUsage("Antes de liberar la memoria:");
+        tf.disposeVariables();
+        logMemoryUsage("Después de liberar la memoria:");
     </script>
 </body>
 </html>
